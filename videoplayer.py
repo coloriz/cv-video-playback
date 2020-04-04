@@ -24,15 +24,17 @@ class VideoPlayer:
         self._loop = asyncio.get_event_loop()
 
         # for performance measuring
-        self._start_time = self._report_time = 0
+        self._play_start_time = self._report_time = 0
 
     def _pre_render_hook(self, frame: np.ndarray) -> NoReturn:
         pass
 
     def _render_frame(self) -> NoReturn:
+        # execution time measuring
+        start_time = time.perf_counter_ns()
         # start fps measuring on first frame
         if self._rendered_frames == 0:
-            self._start_time = self._report_time = time.perf_counter_ns()
+            self._play_start_time = self._report_time = time.perf_counter_ns()
 
         self._next_execution += self._interval
         self._loop.call_at(self._next_execution, self._render_frame)
@@ -52,17 +54,18 @@ class VideoPlayer:
 
         # performance measurment
         current_time = time.perf_counter_ns()
-        if current_time > (self._report_time + 2 * 1_000_000_000):
-            elasped_time = current_time - self._start_time
-            secs = elasped_time / 1_000_000_000
-            try:
-                qsize = self._video_reader.qsize
-            except NotImplementedError:
-                qsize = 'Unknown'
-            print(f'Rendered {self._rendered_frames} frames in {secs:.3f} sec / '
-                  f'{self._rendered_frames / secs:.2f} fps / '
-                  f'qsize: {qsize}')
-            self._report_time = current_time
+        if current_time < (self._report_time + 2 * 1_000_000_000):
+            return
+        elasped_time = current_time - self._play_start_time
+        secs = elasped_time / 1_000_000_000
+        try:
+            qsize = self._video_reader.qsize
+        except NotImplementedError:
+            qsize = 'Unknown'
+        print(f'Rendered {self._rendered_frames} frames in {secs:.3f} sec ({self._rendered_frames / secs:.2f} fps) / '
+              f'execution time: {(current_time - start_time) / 1_000_000:.3f} ms / '
+              f'qsize: {qsize}')
+        self._report_time = current_time
 
     def play(self) -> NoReturn:
         self._next_execution = self._loop.time() + 1  # 1s delay for warming up
