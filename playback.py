@@ -24,5 +24,5 @@ class MyVideoPlayer(VideoPlayer):
 
 
 if __name__ == '__main__':
-    player = MyVideoPlayer(sys.argv[1], 'playback', worker_type='process')
+    player = MyVideoPlayer(sys.argv[1], 'playback')
     player.play()
